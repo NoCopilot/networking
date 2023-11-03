@@ -70,7 +70,7 @@ public:
 					check = true; break;
 				}
 			}
-			if (check) return;
+			if (!check) return;
 			add(str, 1);
 			ip = ip.substr(0, cdir) + str + ip.substr(cdir + str.size());
 		}
