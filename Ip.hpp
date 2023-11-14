@@ -17,7 +17,7 @@ public:
 
 		ip = pip;
 		mask = pmask;
-
+		
 		return checkIp();
 	}
 	bool load(std::vector<int> v)
@@ -39,7 +39,8 @@ public:
 			for (int n : hosts) if (n > hostbit) hostbit = n;
 			hostbit = getPowOf2(hostbit);
 			subnetbit = 32 - cdir - hostbit;
-			if (subnetbit < 1) return;
+			if (subnetbit < 0) return;
+			if(subnetbit == 0 && hosts.size() > 1) return;
 		}
 		
 		sort(hosts);
@@ -50,8 +51,13 @@ public:
 				hostbit = getPowOf2(hosts[i]);
 				subnetbit = 32 - cdir - hostbit;
 			}
-			if (hostbit < 1) return;
-			if (subnetbit >= (32 - cdir) || subnetbit < 1) return;
+			else
+			{
+				if (hostbit < 1) return;
+				if (subnetbit >= (32 - cdir) || subnetbit < 0) return;
+				if(subnetbit == 0 && hosts.size() > 1) return;				
+			}
+			
 			//print net address
 			std::cout << "rete " << (char)('A' + (hosts.size() - i - 1)) << ": " << bitTOdec(ip) + " - ";
 			
@@ -59,7 +65,7 @@ public:
 			std::string str = ip.substr(cdir + subnetbit);
 			for (int j = 0; j < str.size(); j++) str[j] = '1';
 			std::cout << bitTOdec(ip.substr(0, cdir + subnetbit) + str) << "\n";
-
+			
 			//next net
 			str = ip.substr(cdir, subnetbit);
 			bool check = false;
