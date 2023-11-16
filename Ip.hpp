@@ -11,22 +11,29 @@ void sort(std::vector<int>& v, bool b = false);
 class Ip
 {
 public:
-	bool setUp(std::string pip, std::string pmask = "")
+	bool loadIp(std::string IP)
 	{
+		ip = IP;
+		mask = "";
 		cdir = 0;
-
-		ip = pip;
-		mask = pmask;
-		
 		return checkIp();
 	}
-	bool load(std::vector<int> v)
+
+	bool loadMask(std::string MASK)
+	{
+		mask = MASK;
+		cdir = 0;
+		return checkMask();
+	}
+
+	bool loadHosts(std::vector<int> v)
 	{
 		hosts.clear();
 		hosts.reserve(v.size());
 		for (int n : v) hosts.push_back(n + 2);
 		return true;
 	}
+
 	void subnet(bool type = 0)
 	{
 		if (((ipClass + 1) * 8) < cdir) return;
@@ -39,8 +46,7 @@ public:
 			for (int n : hosts) if (n > hostbit) hostbit = n;
 			hostbit = getPowOf2(hostbit);
 			subnetbit = 32 - cdir - hostbit;
-			if (subnetbit < 0) return;
-			if(subnetbit == 0 && hosts.size() > 1) return;
+			if (subnetbit < 1) return;
 		}
 		
 		sort(hosts);
@@ -51,13 +57,8 @@ public:
 				hostbit = getPowOf2(hosts[i]);
 				subnetbit = 32 - cdir - hostbit;
 			}
-			else
-			{
-				if (hostbit < 1) return;
-				if (subnetbit >= (32 - cdir) || subnetbit < 0) return;
-				if(subnetbit == 0 && hosts.size() > 1) return;				
-			}
-			
+			if (hostbit < 1) return;
+			if (subnetbit >= (32 - cdir) || subnetbit < 1) return;
 			//print net address
 			std::cout << "rete " << (char)('A' + (hosts.size() - i - 1)) << ": " << bitTOdec(ip) + " - ";
 			
@@ -65,7 +66,7 @@ public:
 			std::string str = ip.substr(cdir + subnetbit);
 			for (int j = 0; j < str.size(); j++) str[j] = '1';
 			std::cout << bitTOdec(ip.substr(0, cdir + subnetbit) + str) << "\n";
-			
+
 			//next net
 			str = ip.substr(cdir, subnetbit);
 			bool check = false;
@@ -81,8 +82,11 @@ public:
 			ip = ip.substr(0, cdir) + str + ip.substr(cdir + str.size());
 		}
 	}
+
 	inline std::string getIp(){return ip;}
 	inline std::string getMask(){return mask;}
+	inline int getCdir(){return cdir;}
+	inline int getIpClass(){return ipClass;}
 private:
 	std::string ip = "", mask = "";
 	int cdir = 0, ipClass = 0;
@@ -105,7 +109,6 @@ private:
 			//cdir invalido
 			if (mask == "") return false;
 		}
-		else if (!checkMask()) return false;
 
 		//controllo blocchi
 		for (std::string token : tokens)
