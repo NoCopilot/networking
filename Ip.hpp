@@ -34,9 +34,16 @@ public:
 		return true;
 	}
 
+	void reset()
+	{
+		ip = "";
+		mask = "";
+		ipClass = -1;
+		clearHosts();
+	}
+
 	void subnet(bool type = 0)
 	{
-		if (((ipClass + 1) * 8) < cdir) return;
 		//fixed -> type = 0
 		//vlsm  -> type = 1
 		int hostbit = 0, subnetbit;
@@ -63,7 +70,7 @@ public:
 			std::cout << "rete " << (char)('A' + (hosts.size() - i - 1)) << ": " << bitTOdec(ip) + " - ";
 			
 			//print broadcast address
-			std::string str = ip.substr(cdir + subnetbit);
+			std::string str = ip.substr(cdir + static_cast<std::basic_string<char, std::char_traits<char>, std::allocator<char>>::size_type>(subnetbit));
 			for (int j = 0; j < str.size(); j++) str[j] = '1';
 			std::cout << bitTOdec(ip.substr(0, cdir + subnetbit) + str) << "\n";
 
@@ -87,6 +94,7 @@ public:
 	inline std::string getMask(){return mask;}
 	inline int getCdir(){return cdir;}
 	inline int getIpClass(){return ipClass;}
+	inline void clearHosts() { hosts.clear(); }
 private:
 	std::string ip = "", mask = "";
 	int cdir = 0, ipClass = 0;
@@ -109,6 +117,8 @@ private:
 			//cdir invalido
 			if (mask == "") return false;
 		}
+		else cdir = 0;
+		
 
 		//controllo blocchi
 		for (std::string token : tokens)
@@ -126,6 +136,8 @@ private:
 		}
 
 		getClass();
+		if (mask == "") return true;
+		if (cdir < (ipClass * 8)) return false;
 		return bitAnd();
 	}
 
@@ -148,6 +160,8 @@ private:
 			if (current == '0' && ch != current) return false;
 			if (current == '1') cdir++;
 		}
+
+		if (ipClass * 8 < cdir) return false;
 
 		mask = str;
 		return true;
@@ -181,7 +195,7 @@ private:
 		int n = 0;
 		while (ip[n] == '1') n++;
 
-		ipClass = n;
+		ipClass = ++n;
 	}
 
 	int toInt(std::string str)
