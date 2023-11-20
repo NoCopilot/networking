@@ -6,7 +6,14 @@
 #include <vector>
 #include <sstream>
 
-void sort(std::vector<int>& v, bool b = false);
+int toInt(std::string);
+int getPowOf2(int);
+std::string toString(int);
+std::string toBit(int, int);
+std::string getmask(int);
+std::string bitTOdec(std::string);
+std::vector<std::string> split(std::string, char);
+std::vector<std::string> split(std::string, int);
 
 class Ip
 {
@@ -26,9 +33,10 @@ public:
 		return checkMask();
 	}
 
-	bool loadHosts(std::vector<int> v)
+	bool loadHosts(std::vector<int> v, std::vector<std::string> str)
 	{
 		hosts.clear();
+		names = str;
 		hosts.reserve(v.size());
 		for (int n : v) hosts.push_back(n + 2);
 		return true;
@@ -42,8 +50,9 @@ public:
 		clearHosts();
 	}
 
-	void subnet(bool type = 0)
+	std::vector<std::string> subnet(bool type = 0)
 	{
+		std::vector<std::string> result;
 		//fixed -> type = 0
 		//vlsm  -> type = 1
 		int hostbit = 0, subnetbit;
@@ -53,10 +62,8 @@ public:
 			for (int n : hosts) if (n > hostbit) hostbit = n;
 			hostbit = getPowOf2(hostbit);
 			subnetbit = 32 - cdir - hostbit;
-			if (subnetbit < 1) return;
-		}
-		
-		sort(hosts);
+			if (subnetbit < 1) return result;
+		} else sort();
 		for (int i = (int)hosts.size() - 1; i >= 0 ; i--)
 		{
 			if (type) //if vlsm, always find the subnet and host bits for every net
@@ -64,16 +71,23 @@ public:
 				hostbit = getPowOf2(hosts[i]);
 				subnetbit = 32 - cdir - hostbit;
 			}
-			if (hostbit < 1) return;
-			if (subnetbit >= (32 - cdir) || subnetbit < 1) return;
+			if (hostbit < 1)
+			{
+				result.clear();
+				return result;
+			}
+			if (subnetbit >= (32 - cdir) || subnetbit < 1)
+			{
+				result.clear();
+				return result;
+			}
 			//print net address
-			std::cout << "rete " << (char)('A' + (hosts.size() - i - 1)) << ": " << bitTOdec(ip) + " - ";
+			result.push_back("rete " + names[hosts.size() - i - 1] + ": " + bitTOdec(ip) + " - ");
 			
 			//print broadcast address
 			std::string str = ip.substr(cdir + static_cast<std::basic_string<char, std::char_traits<char>, std::allocator<char>>::size_type>(subnetbit));
 			for (int j = 0; j < str.size(); j++) str[j] = '1';
-			std::cout << bitTOdec(ip.substr(0, cdir + subnetbit) + str) << "\n";
-
+			result[hosts.size() - i - 1] += bitTOdec(ip.substr(0, cdir + subnetbit) + str);
 			//next net
 			str = ip.substr(cdir, subnetbit);
 			bool check = false;
@@ -84,21 +98,27 @@ public:
 					check = true; break;
 				}
 			}
-			if (!check) return;
+			if (!check)
+			{
+				result.clear();
+				return result;
+			}
 			add(str, 1);
 			ip = ip.substr(0, cdir) + str + ip.substr(cdir + str.size());
 		}
+		return result;
 	}
 
 	inline std::string getIp(){return ip;}
 	inline std::string getMask(){return mask;}
 	inline int getCdir(){return cdir;}
 	inline int getIpClass(){return ipClass;}
-	inline void clearHosts() { hosts.clear(); }
+	inline void clearHosts() { hosts.clear(); names.clear(); }
 private:
 	std::string ip = "", mask = "";
 	int cdir = 0, ipClass = 0;
 	std::vector<int> hosts;
+	std::vector<std::string> names;
 
 	bool checkIp()
 	{
@@ -113,7 +133,7 @@ private:
 		tokens[3] = v[0];
 		if (v.size() > 1) {
 			cdir = toInt(v[1]);
-			mask = getMask(cdir);
+			mask = getmask(cdir);
 			//cdir invalido
 			if (mask == "") return false;
 		}
@@ -179,17 +199,6 @@ private:
 		return true;
 	}
 
-	int getPowOf2(int n)
-	{
-		int i = 1, j = 0;
-		while (i < n)
-		{
-			i *= 2;
-			j++;
-		}
-		return j;
-	}
-
 	void getClass()
 	{
 		int n = 0;
@@ -198,113 +207,27 @@ private:
 		ipClass = ++n;
 	}
 
-	int toInt(std::string str)
-	{
-		int n = -1;
-		std::stringstream ss;
-		ss << str;
-		ss >> n;
-		return n;
-	}
-
-	std::string toString(int n)
-	{
-		std::stringstream ss;
-		ss << n;
-		return ss.str();
-	}
-
-	std::string toBit(int n, int s = -1)
-	{
-		if (n < 0) return "";
-		std::string str = "";
-		do
-		{
-			str = (char)(n % 2 + 48) + str;
-			n /= 2;
-		} while (n != 0);
-
-		if (s == -1) return str;
-
-		if (str.size() > s) return "";
-
-		for (int i = s - (int)str.size(); i > 0; i--)
-			str = "0" + str;
-
-		return str;
-	}
-
-	std::string getMask(int n)
-	{
-		if (n < 1 || n > 31) return "";
-		std::string to_return = "";
-		for (int i = 0; i < 32; i++)
-		{
-			if (n > 0)
-			{
-				to_return += "1";
-				n--;
-			}
-			else to_return += "0";
-		}
-
-		return to_return;
-	}
-
-	std::vector<std::string> split(std::string str, char del)
-	{
-		std::vector<std::string> to_return;
-		std::string temp = "";
-
-		for (int i = 0; i < (int)str.size(); i++)
-		{
-			if (del == str[i])
-			{
-				to_return.push_back(temp);
-				temp = "";
-				continue;
-			}
-			temp += str[i];
-		}
-		if (temp != "") to_return.push_back(temp);
-
-		return to_return;
-	}
-
-	std::vector<std::string> split(std::string str, int every)
-	{
-		std::vector<std::string> v;
-		while (str.size() > every)
-		{
-			v.push_back(str.substr(0, every));
-			str = str.substr(every);
-		}
-		v.push_back(str);
-		return v;
-	}
-
-	std::string bitTOdec(std::string str)
-	{
-		std::vector<std::string> v = split(str, 8);
-		str = "";
-		for (std::string s : v)
-		{
-			int j = 1, n = 0;
-			for (int i = (int)s.size() - 1; i >= 0; i--)
-			{
-				if (s[i] == '1') n += j;
-				j *= 2;
-			}
-			str += toString(n) + ".";
-		}
-		str.erase(str.size() - 1);
-
-		return str;
-	}
-
 	inline void add(std::string& str, int i)
 	{
 		str = toBit(toInt(bitTOdec(str)) + i, (int)str.size());
+	}
+
+	void sort()
+	{
+		std::vector<int> sortedI;
+		std::vector<std::string> sortedS;
+		for (int i = 0; i < hosts.size(); i++)
+		{
+			int j;
+			for (j = 0; j < sortedI.size(); j++)
+			{
+				if (hosts[i] < sortedI[j]) break;
+			}
+			sortedI.insert(sortedI.begin() + j, hosts[i]);
+			sortedS.insert(sortedS.begin() + j, names[i]);
+		}
+		hosts = sortedI;
+		names = sortedS;
 	}
 };
 #endif
