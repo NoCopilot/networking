@@ -64,7 +64,7 @@ public:
 			subnetbit = 32 - cdir - hostbit;
 			if (subnetbit < 1) return result;
 		} else sort();
-		for (int i = (int)hosts.size() - 1; i >= 0 ; i--)
+		for (int i = 0; i < (int)hosts.size(); i++)
 		{
 			if (type) //if vlsm, always find the subnet and host bits for every net
 			{
@@ -82,12 +82,12 @@ public:
 				return result;
 			}
 			//print net address
-			result.push_back("rete " + names[hosts.size() - i - 1] + ": " + bitTOdec(ip) + " - ");
+			result.push_back("rete " + names[i] + ": " + bitTOdec(ip) + " - ");
 			
 			//print broadcast address
-			std::string str = ip.substr(cdir + static_cast<std::basic_string<char, std::char_traits<char>, std::allocator<char>>::size_type>(subnetbit));
+			std::string str = ip.substr((size_t)(cdir + subnetbit));
 			for (int j = 0; j < str.size(); j++) str[j] = '1';
-			result[hosts.size() - i - 1] += bitTOdec(ip.substr(0, cdir + subnetbit) + str);
+			result[i] += bitTOdec(ip.substr(0, cdir + subnetbit) + str) + " - " + bitTOdec(getmask(cdir + subnetbit));
 			//next net
 			str = ip.substr(cdir, subnetbit);
 			bool check = false;
@@ -221,7 +221,7 @@ private:
 			int j;
 			for (j = 0; j < sortedI.size(); j++)
 			{
-				if (hosts[i] < sortedI[j]) break;
+				if (hosts[i] > sortedI[j]) break;
 			}
 			sortedI.insert(sortedI.begin() + j, hosts[i]);
 			sortedS.insert(sortedS.begin() + j, names[i]);

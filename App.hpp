@@ -149,6 +149,7 @@ private:
 		char ch = 'A';
 		for (int i = 0; i < shosts.size(); i++)
 		{
+			if (shosts[i].getSize() == 0) continue;
 			std::vector<std::string> temp = split(shosts[i], ' ');
 			nhosts.push_back(toInt(temp[0]));
 
@@ -160,7 +161,7 @@ private:
 			}
 		}
 		ip.loadHosts(nhosts, subnetname);
-		std::vector<std::string> result = ip.subnet();
+		std::vector<std::string> result = ip.subnet(1);
 		
 		if (nhosts.size() != result.size())
 		{
