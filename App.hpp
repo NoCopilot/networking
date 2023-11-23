@@ -20,36 +20,36 @@ public:
 		setUpTextBox(hosts, *win);
 		setUpTextBox(routers, *win);
 		setUpTextBox(links, *win);
-
+	
 		float gap = 30.f;
-
+		
 		//ip label
-		ipLabel.setText("ip:");
-		ipLabel.setFont("font.ttf");
-		ipLabel.setChSize(18);
-		ipLabel.setColor(sf::Color::Black);
-		ipLabel.setPos({ 0, 10.f });
+		setUpLabel(ipLabel, "ip:", { 0, 10.f });
 		//ip inputbox
 		ipInput.setPos({ ipLabel.getSize().x + gap * 0.3f, 10.f });
 		ipInput.setMultiLines(false);
 		//mask label
-		maskLabel.setText("mask:");
-		maskLabel.setFont("font.ttf");
-		maskLabel.setChSize(18);
-		maskLabel.setColor(sf::Color::Black);
-		maskLabel.setPos({ ipInput.getSize().x + ipInput.getPos().x + gap, 10.f});
+		setUpLabel(maskLabel, "mask:", { ipInput.getSize().x + ipInput.getPos().x + gap, 10.f});
 		//mask inputbox
 		maskInput.setPos({ maskLabel.getSize().x + maskLabel.getPos().x + gap * 0.3f, 10.f});
 		maskInput.setMultiLines(false);
 
+		//hosts input label
+		setUpLabel(subnetsLabel, "Hosts", { 0.f, 110.f});
 		//hosts inputbox (line: int, [optional]string)
 		hosts.setMultiLines(true);
 		hosts.setPos({ 0.f, 130.f });
 		hosts.setSize({ 200.f, 200.f });
+		
+		//router subnet link label
+		setUpLabel(subnetsRouterLinksLabel, "Routers", {hosts.getSize().x + hosts.getPos().x + gap + 10, 110.f});
 		//router link to subnet (line: [router name]string, [subnetname]string)
 		routers.setMultiLines(true);
 		routers.setPos({ hosts.getSize().x + hosts.getPos().x + gap, 130.f });
 		routers.setSize({ 200.f, 200.f });
+		
+		//router links label
+		setUpLabel(routerLinksLabel, "Links", {routers.getSize().x + routers.getPos().x + gap + 10, 110.f});
 		//links between routers (line: [router name]string, [router name]string)
 		links.setMultiLines(true);
 		links.setPos({ routers.getSize().x + routers.getPos().x + gap, 130.f });
@@ -80,7 +80,7 @@ private:
 
 	Ip ip;
 
-	Label ipLabel, maskLabel;
+	Label ipLabel, maskLabel, subnetsLabel, subnetsRouterLinksLabel, routerLinksLabel;
 	TextBox hosts, routers, ipInput, maskInput, links;
 	Button btn;
 
@@ -94,7 +94,16 @@ private:
 		t.setBarColor(sf::Color::Black);
 		t.setScrollBarSize(8);
 	}
-
+	
+	void setUpLabel(Label& label, sf::String text, sf::Vector2f pos)
+	{
+		label.setText(text);
+		label.setFont("font.ttf");
+		label.setChSize(18);
+		label.setColor(sf::Color::Black);
+		label.setPos(pos);
+	}
+	
 	void listen()
 	{
 		while (win->pollEvent(*e))
@@ -121,7 +130,10 @@ private:
 
 		ipLabel.draw(win);
 		maskLabel.draw(win);
-
+		subnetsLabel.draw(win);
+		subnetsRouterLinksLabel.draw(win);
+		routerLinksLabel.draw(win);
+		
 		ipInput.draw();
 		maskInput.draw();
 		hosts.draw();
