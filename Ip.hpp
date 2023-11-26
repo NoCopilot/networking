@@ -14,6 +14,12 @@ std::string getmask(int);
 std::string bitTOdec(std::string);
 std::vector<std::string> split(std::string, char);
 std::vector<std::string> split(std::string, int);
+struct network
+{
+	std::string name, networkAddress, broadcastAddress;
+	std::vector<std::string> gatewayAdresses;
+	int cdir;
+};
 
 class Ip
 {
@@ -37,8 +43,7 @@ public:
 	{
 		hosts.clear();
 		names = str;
-		hosts.reserve(v.size());
-		for (int n : v) hosts.push_back(n + 2);
+		hosts = v;
 		return true;
 	}
 
@@ -50,9 +55,9 @@ public:
 		clearHosts();
 	}
 
-	std::vector<std::string> subnet(bool type = 0)
+	std::vector<network> subnet(bool type = 0)
 	{
-		std::vector<std::string> result;
+		std::vector<network> result;
 		//fixed -> type = 0
 		//vlsm  -> type = 1
 		int hostbit = 0, subnetbit;
@@ -81,13 +86,19 @@ public:
 				result.clear();
 				return result;
 			}
-			//print net address
-			result.push_back("rete " + names[i] + ": " + bitTOdec(ip) + " - ");
-			
-			//print broadcast address
+			//net address
+			result.push_back(network());
+			result[i].name = names[i];
+			result[i].networkAddress = bitTOdec(ip);
+
+			//broadcast address
 			std::string str = ip.substr((size_t)(cdir + subnetbit));
 			for (int j = 0; j < str.size(); j++) str[j] = '1';
-			result[i] += bitTOdec(ip.substr(0, cdir + subnetbit) + str) + " - " + bitTOdec(getmask(cdir + subnetbit));
+			result[i].broadcastAddress = bitTOdec(ip.substr(0, cdir + subnetbit) + str);
+
+			//todo: gateway addresses
+
+
 			//next net
 			str = ip.substr(cdir, subnetbit);
 			bool check = false;
