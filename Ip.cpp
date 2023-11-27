@@ -9,6 +9,17 @@ int toInt(std::string str)
 	return n;
 }
 
+int bitToInt(std::string str)
+{
+	int n = 0, j = 1;
+	for (int i = str.size() - 1; i >= 0; i--)
+	{
+		if (str[i] == '1') n += j;
+		j *= 2;
+	}
+	return n;
+}
+
 std::string toString(int n)
 {
 	std::stringstream ss;

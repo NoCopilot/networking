@@ -8,6 +8,7 @@
 
 int toInt(std::string);
 int getPowOf2(int);
+int bitToInt(std::string);
 std::string toString(int);
 std::string toBit(int, int);
 std::string getmask(int);
@@ -17,7 +18,7 @@ std::vector<std::string> split(std::string, int);
 struct network
 {
 	std::string name, networkAddress, broadcastAddress;
-	std::vector<std::string> gatewayAdresses;
+	std::vector<std::string> gatewayAdresses, gatewayNames;
 	int cdir;
 };
 
@@ -39,11 +40,12 @@ public:
 		return checkMask();
 	}
 
-	bool loadHosts(std::vector<int> v, std::vector<std::string> str)
+	bool loadHosts(std::vector<int> v, std::vector<std::string> str, std::vector<std::vector<std::string>> v1)
 	{
 		hosts.clear();
 		names = str;
 		hosts = v;
+		links = v1;
 		return true;
 	}
 
@@ -75,16 +77,16 @@ public:
 			{
 				hostbit = getPowOf2(hosts[i]);
 				subnetbit = 32 - cdir - hostbit;
-			}
-			if (hostbit < 1)
-			{
-				result.clear();
-				return result;
-			}
-			if (subnetbit >= (32 - cdir) || subnetbit < 1)
-			{
-				result.clear();
-				return result;
+				if (hostbit < 1)
+				{
+					result.clear();
+					return result;
+				}
+				if (subnetbit >= (32 - cdir) || subnetbit < 1)
+				{
+					result.clear();
+					return result;
+				}
 			}
 			//net address
 			result.push_back(network());
@@ -96,8 +98,17 @@ public:
 			for (int j = 0; j < str.size(); j++) str[j] = '1';
 			result[i].broadcastAddress = bitTOdec(ip.substr(0, cdir + subnetbit) + str);
 
-			//todo: gateway addresses
+			//todo: gateway names and addresses
+			result[i].gatewayNames = links[i];
+			int n = bitToInt(str);
+			for (int j = links[i].size() - 1; j >= 0; j--)
+			{
+				n--;
+				result[i].gatewayAdresses.insert(result[i].gatewayAdresses.begin(), bitTOdec(ip.substr(0, cdir + subnetbit) + toBit(n, -1)));
+			}
 
+			//network cdir
+			result[i].cdir = cdir + subnetbit;
 
 			//next net
 			str = ip.substr(cdir, subnetbit);
@@ -130,6 +141,7 @@ private:
 	int cdir = 0, ipClass = 0;
 	std::vector<int> hosts;
 	std::vector<std::string> names;
+	std::vector<std::vector<std::string>> links;
 
 	bool checkIp()
 	{
@@ -227,18 +239,20 @@ private:
 	{
 		std::vector<int> sortedI;
 		std::vector<std::string> sortedS;
+		std::vector<std::vector<std::string>> sortedL;
 		for (int i = 0; i < hosts.size(); i++)
 		{
 			int j;
 			for (j = 0; j < sortedI.size(); j++)
-			{
 				if (hosts[i] > sortedI[j]) break;
-			}
+			
 			sortedI.insert(sortedI.begin() + j, hosts[i]);
 			sortedS.insert(sortedS.begin() + j, names[i]);
+			sortedL.insert(sortedL.begin() + j, links[i]);
 		}
 		hosts = sortedI;
 		names = sortedS;
+		links = sortedL;
 	}
 };
 #endif
