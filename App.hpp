@@ -224,6 +224,7 @@ private:
 		if (result.size() == 0) return;
 
 		//printing subnetting result
+		std::cout << "subnets:\n";
 		for (int i = 0; i < result.size(); i++)
 		{
 			std::cout << result[i].name << ":\n";
@@ -235,7 +236,7 @@ private:
 		}
 		
 		//getting links
-		nhosts.clear();
+		nhosts = std::vector<int>(routerList.size(), 3);
 		tempLinks = std::vector<std::vector<std::string>>(routerList.size());
 		tboxvalue = links.getText();
 		for (int i = 0; i < tboxvalue.size(); i++)
@@ -243,12 +244,42 @@ private:
 			std::vector<std::string> temp = split(tboxvalue[i], ' ');
 			if (temp.size() != 2) continue;
 			//check existing router name
-
+			int n = vfind(routerList, temp[0]);
+			if (n == -1)
+			{
+				routerList.push_back(temp[0]);
+				tempLinks.push_back({temp[1]});
+				nhosts.push_back(4);
+				continue;
+			}
 			//add the link
-
+			tempLinks[n].push_back(temp[1]);
+			nhosts[n]++;
 		}
+		//clearing routers with no connections
+		for (int i = 0; i < nhosts.size(); i++)
+		{
+			if (nhosts[i] == 3)
+			{
+				nhosts.erase(nhosts.begin() + i);
+				i--;
+			}
+		}
+		//getting the routers result
+		ip.loadHosts(nhosts, routerList, tempLinks);
+		result = ip.subnet(1);
+		if (result.size() == 0) return;
 
 		//printing routers result
+		std::cout << "\nrouter:\n";
+		for (int i = 0; i < result.size(); i++)
+		{
+			std::cout << result[i].name << ":\n";
+			std::cout << "  network address: " << result[i].networkAddress << "\n";
+			for (int j = 0; j < result[i].gatewayAdresses.size(); j++)
+				std::cout << "  " << result[i].gatewayNames[j] << " : " << result[i].gatewayAdresses[j] << "\n";
+			std::cout << "  broadcast address: " << result[i].broadcastAddress << "\n";
+		}
 	}
 
 	void checkIp()
