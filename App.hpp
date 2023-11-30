@@ -174,6 +174,7 @@ private:
 		std::vector<std::string> subnetList, routerList;
 		std::vector<sf::String> tboxvalue = hosts.getText();
 		std::vector<std::vector<std::string>> tempLinks;
+		std::string totalResult = "";
 		//getting subnet names and host number + 2 (broadcast and network address)
 		for (int i = 0; i < tboxvalue.size(); i++)
 		{
@@ -224,15 +225,15 @@ private:
 		if (result.size() == 0) return;
 
 		//printing subnetting result
-		std::cout << "subnets:\n";
+		totalResult += "subnets:\n";
 		for (int i = 0; i < result.size(); i++)
 		{
-			std::cout << result[i].name << ":\n";
-			std::cout << "  network address: " << result[i].networkAddress << "\n";
-			std::cout << "  gateways :\n";
+			totalResult += result[i].name + ":\n";
+			totalResult += "  network address: " + result[i].networkAddress + "\n";
+			totalResult += "  gateways:\n";
 			for (int j = 0; j < result[i].gatewayAdresses.size(); j++)
-				std::cout << "    " << result[i].gatewayNames[j] << " : " << result[i].gatewayAdresses[j] << "\n";
-			std::cout << "  broadcast address: " << result[i].broadcastAddress << "\n";
+				totalResult += "    " + result[i].gatewayNames[j] + " : " + result[i].gatewayAdresses[j] + "\n";
+			totalResult += "  broadcast address: " + result[i].broadcastAddress + "\n";
 		}
 		
 		//getting links
@@ -266,19 +267,52 @@ private:
 			}
 		}
 		//getting the routers result
-		ip.loadHosts(nhosts, routerList, tempLinks);
-		result = ip.subnet(1);
-		if (result.size() == 0) return;
-
-		//printing routers result
-		std::cout << "\nrouter:\n";
-		for (int i = 0; i < result.size(); i++)
+		if (nhosts.size() > 0)
 		{
-			std::cout << result[i].name << ":\n";
-			std::cout << "  network address: " << result[i].networkAddress << "\n";
-			for (int j = 0; j < result[i].gatewayAdresses.size(); j++)
-				std::cout << "  " << result[i].gatewayNames[j] << " : " << result[i].gatewayAdresses[j] << "\n";
-			std::cout << "  broadcast address: " << result[i].broadcastAddress << "\n";
+			ip.loadHosts(nhosts, routerList, tempLinks);
+			result = ip.subnet(1);
+			if (result.size() == 0) return;
+
+			//printing routers result
+			totalResult += "router:\n";
+			for (int i = 0; i < result.size(); i++)
+			{
+				totalResult += result[i].name + ":\n";
+				totalResult += "  network address: " + result[i].networkAddress + "\n";
+				totalResult += "  router address: " + result[i].address + "\n";
+				for (int j = 0; j < result[i].gatewayAdresses.size(); j++)
+					totalResult += "  " + result[i].gatewayNames[j] +" : " + result[i].gatewayAdresses[j] + "\n";
+				totalResult += "  broadcast address: " + result[i].broadcastAddress + "\n";
+			}
+		}
+		popup(totalResult);
+
+	}
+
+	void popup(std::string str)
+	{
+		sf::RenderWindow window(sf::VideoMode(500, 500), "Result", sf::Style::Titlebar | sf::Style::Close);
+		window.setFramerateLimit(50);
+		sf::Event event;
+		TextBox textbox;
+		setUpTextBox(textbox, window);
+		textbox.setMultiLines(true);
+		textbox.write(str);
+		textbox.setSize({500.f, 500.f});
+		textbox.setEditable(false);
+
+		while (window.isOpen())
+		{
+			while (window.pollEvent(event))
+			{
+				textbox.listen(event);
+				if (event.type == sf::Event::Closed) window.close();
+			}
+			window.clear();
+
+			textbox.draw();
+
+			window.display();
 		}
 	}
 

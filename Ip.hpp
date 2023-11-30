@@ -17,7 +17,7 @@ std::vector<std::string> split(std::string, char);
 std::vector<std::string> split(std::string, int);
 struct network
 {
-	std::string name, networkAddress, broadcastAddress;
+	std::string name, networkAddress, broadcastAddress, address;
 	std::vector<std::string> gatewayAdresses, gatewayNames;
 	int cdir;
 };
@@ -106,6 +106,7 @@ public:
 				n--;
 				result[i].gatewayAdresses.insert(result[i].gatewayAdresses.begin(), bitTOdec(ip.substr(0, cdir + subnetbit) + toBit(n, -1)));
 			}
+			result[i].address = bitTOdec(ip.substr(0, cdir + subnetbit) + toBit(n, -1));
 
 			//network cdir
 			result[i].cdir = cdir + subnetbit;
