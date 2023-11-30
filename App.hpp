@@ -157,7 +157,7 @@ private:
 		ip.reset();
 		if (!ip.loadIp(ipInput.getText()[0]))
 		{
-			//todo: error ip message
+			errorPopup("Not valid ip address");
 			return;
 		}
 		
@@ -165,7 +165,7 @@ private:
 		{
 			if (!ip.loadMask(maskInput.getText()[0]))
 			{
-				//todo: error mask message
+				errorPopup("Not valid mask");
 				return;
 			}
 		}
@@ -179,14 +179,23 @@ private:
 		for (int i = 0; i < tboxvalue.size(); i++)
 		{
 			std::vector<std::string> temp = split(tboxvalue[i], ' ');
-			if (temp.size() != 2) return;	//subnets needs a name
+			if (temp.size() != 2)
+			{
+				if (tboxvalue[i].getSize() == 0) continue;
+				errorPopup("Subnet needs a name: " + toString(i));
+				return;
+			}
 
 			int n = vfind(subnetList, temp[1]);
 			if (n == -1)
 			{
 				//subnet name doesn't exist
 				n = toInt(temp[0]) + 2;
-				if (n < 0) return;	//negative number error message
+				if (n < 0)
+				{
+					errorPopup("Negative numbers not accepted");
+					return;
+				}
 				subnetList.push_back(temp[1]);
 				nhosts.push_back(n);
 			}
@@ -204,7 +213,12 @@ private:
 		for (int i = 0; i < tboxvalue.size(); i++)
 		{
 			std::vector<std::string> temp = split(tboxvalue[i], ' ');
-			if (temp.size() != 2) continue;
+			if (temp.size() != 2)
+			{
+				if (tboxvalue[i].getSize() == 0) continue;
+				errorPopup("Not valid line in router textbox: " + toString(i));
+				return;
+			}
 			//checking if subnet name exist
 			int n = vfind(subnetList, temp[1]);
 			if(n != -1)
@@ -216,13 +230,18 @@ private:
 				tempLinks[n].push_back(temp[0]);
 				continue;
 			}
+			errorPopup("Not subnet with that name exist: " + toString(i));
 			return;
 		}
 		
 		//getting the subnets
 		ip.loadHosts(nhosts, subnetList, tempLinks);
 		std::vector<network> result = ip.subnet(1);
-		if (result.size() == 0) return;
+		if (result.size() == 0)
+		{
+			errorPopup("Couldn't calculate the subnets, check your input");
+			return;
+		}
 
 		//printing subnetting result
 		totalResult += "subnets:\n";
@@ -243,7 +262,12 @@ private:
 		for (int i = 0; i < tboxvalue.size(); i++)
 		{
 			std::vector<std::string> temp = split(tboxvalue[i], ' ');
-			if (temp.size() != 2) continue;
+			if (temp.size() != 2)
+			{
+				if (tboxvalue[i].getSize() == 0) continue;
+				errorPopup("Not valid line in links textbox: " + toString(i));
+				return;
+			}
 			//check existing router name
 			int n = vfind(routerList, temp[0]);
 			if (n == -1)
@@ -271,10 +295,14 @@ private:
 		{
 			ip.loadHosts(nhosts, routerList, tempLinks);
 			result = ip.subnet(1);
-			if (result.size() == 0) return;
+			if (result.size() == 0) 
+			{
+				errorPopup("Couldn't calculate router links, check your input");
+				return;
+			}
 
 			//printing routers result
-			totalResult += "router:\n";
+			totalResult += "routers:\n";
 			for (int i = 0; i < result.size(); i++)
 			{
 				totalResult += result[i].name + ":\n";
@@ -287,6 +315,29 @@ private:
 		}
 		popup(totalResult);
 
+	}
+
+	void errorPopup(std::string error)
+	{
+		Label label;
+		setUpLabel(label, error, {0.f, 0.f});
+		label.setChSize(20);
+		sf::RenderWindow window(sf::VideoMode(label.getSize().x + 20, label.getSize().y + 10), "Error", sf::Style::Titlebar | sf::Style::Close);
+		window.setFramerateLimit(50);
+		sf::Event event;
+
+		while (window.isOpen())
+		{
+			while (window.pollEvent(event))
+			{
+				if (event.type == sf::Event::Closed) window.close();
+			}
+			window.clear(sf::Color::White);
+
+			label.draw(&window);
+
+			window.display();
+		}
 	}
 
 	void popup(std::string str)
@@ -308,7 +359,7 @@ private:
 				textbox.listen(event);
 				if (event.type == sf::Event::Closed) window.close();
 			}
-			window.clear();
+			window.clear(sf::Color::White);
 
 			textbox.draw();
 
