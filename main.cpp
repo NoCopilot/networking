@@ -1,7 +1,11 @@
-#include "App.hpp"
+#include "mainwindow.h"
+#include <QApplication>
 
-int main()
+int main(int argc, char *argv[])
 {
-	App().begin();
-	return 0;
+    QApplication a(argc, argv);
+    MainWindow w;
+    w.setWindowFlags(Qt::Window | Qt::MSWindowsFixedSizeDialogHint);
+    w.show();
+    return a.exec();
 }

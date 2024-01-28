@@ -1,4 +1,4 @@
-#ifndef IP_HPP
+﻿#ifndef IP_HPP
 #define IP_HPP
 
 #include <iostream>
@@ -20,6 +20,12 @@ struct network
 	std::string name, networkAddress, broadcastAddress, address;
 	std::vector<std::string> gatewayAdresses, gatewayNames;
 	int cdir;
+};
+struct Subnet
+{
+    std::string name;
+    int hosts;
+    std::vector<std::string> gateways;
 };
 
 class Ip
@@ -56,6 +62,12 @@ public:
 		ipClass = -1;
 		clearHosts();
 	}
+
+    std::vector<network> subnet(std::vector<Subnet> v, bool type = 0)
+    {
+
+        return {};
+    }
 
 	std::vector<network> subnet(bool type = 0)
 	{
