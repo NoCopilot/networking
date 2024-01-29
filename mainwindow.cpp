@@ -1,54 +1,30 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 
-void readTextBox(std::string str, std::vector<Subnet>& subnets, bool mode)
+struct Association
 {
-    int temp_n, temp_n1;
-    std::string temp;
-    Subnet subnet;
+    std::string a, b;
+};
 
-    for(size_t i = 0; i < str.size(); i++)
+std::vector<Association> getAssociations(std::string str)
+{
+    std::vector<Association> res;
+    std::vector<std::string> rows = split(str, '\n'), temp_v;
+
+    for(std::string& i : rows)
     {
-        //getting the line
-        temp_n = str.find(10, i);
-        if(temp_n == -1) temp_n = str.size();
-        temp = str.substr(i, temp_n - i);
+        temp_v = split(i, ' ');
+        for(size_t j = 0; j < temp_v.size(); j++)
+            if(temp_v[j].size() == 0)
+                temp_v.erase(temp_v.begin() + j--);
 
-        //getting name
-        temp_n1 = temp.find(' ');
-        if(temp_n1 == -1 || temp_n1 == 0)
-        {
-            i = temp_n + 1;
-            continue;
-        }
-
-        //setting name and host numbers then add to the list
-        if(!mode)
-        {
-            subnet.name = temp.substr(0, temp_n1);
-            subnet.hosts = toInt(temp.substr(temp_n1+1));
-            subnets.push_back(subnet);
-        }
-        else
-        {
-            subnet.name = temp.substr(temp_n1+1);
-            temp = temp.substr(0, temp_n1);
-            for(Subnet& k : subnets)
-            {
-                if(k.name == subnet.name)
-                {
-                    k.gateways.push_back(temp);
-                    break;
-                }
-            }
-        }
-
-        //ready for next line
-        i = temp_n;
+        if(temp_v.size() != 2) continue;
+        res.push_back({temp_v[0], temp_v[1]});
     }
+    return res;
 }
 
-std::string fileRead(std::wstring path)
+std::string readFile(std::wstring path)
 {
     std::ifstream file(std::filesystem::path(path), std::ios::binary);
     if(!file.is_open()) return "";
@@ -66,7 +42,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->ipInput->setText("1.1.1.1/24");
     ui->subnetBox->setText("s1 10\ns2 20\ns3 30");
-    ui->routerBox->setText("r1 s1\nr1 s2\nr3 s3\n");
+    ui->routerBox->setText("r1 s1\nr1 s2\nr3 s3");
 }
 
 MainWindow::~MainWindow()
@@ -76,12 +52,12 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_loadFromFileBtn_clicked()
 {
-    loadFromFile(QFileDialog::getOpenFileName());
+    loadFromFile(QFileDialog::getOpenFileName(this, "", QDir::currentPath() + "/saves"));
 }
 
 void MainWindow::loadFromFile(QString path)
 {
-    std::string text = fileRead(path.toStdWString());
+    std::string text = readFile(path.toStdWString());
 }
 
 void MainWindow::on_closeWindowBtn_clicked()
@@ -97,7 +73,7 @@ void MainWindow::on_calculateBtn_clicked()
     {
         QMessageBox msgBox;
         msgBox.setWindowTitle("title");
-        msgBox.setText("ip not valid");
+        msgBox.setText("Ip not valid");
         msgBox.exec();
         return;
     }
@@ -105,47 +81,82 @@ void MainWindow::on_calculateBtn_clicked()
     {
         QMessageBox msgBox;
         msgBox.setWindowTitle("title");
-        msgBox.setText("mask not valid");
+        msgBox.setText("Mask not valid");
         msgBox.exec();
         return;
     }
 
     std::vector<Subnet> subnets;
 
-    std::vector<std::string> host_names, router_names;
-    std::vector<int> host_n;
-    std::vector<std::vector<std::string>> subnet_links, router_links;
-
-    //first textbox
-    readTextBox(ui->subnetBox->toPlainText().toStdString(), subnets, 0);
-    //eliminate name repetition
-    for(size_t i = subnets.size()-1; i >= 1; i--)
+    //subnet textbox
+    std::vector<Association> associations = getAssociations(ui->subnetBox->toPlainText().toStdString());
+    bool check;
+    for(const Association& i : associations)
     {
-        for(size_t j = 0; j < i; j++)
+        //checking if already exist
+        check = true;
+        for(size_t j = 0; j < subnets.size(); j++)
         {
-            if(subnets[i].name == subnets[j].name)
+            if(subnets[j].name == i.a)
             {
-                subnets.erase(subnets.begin() + i);
+                check = false;
+                break;
+            }
+        }
+        if(!check) continue;
+        //adding the subnet
+        subnets.push_back({
+                i.a,
+                toInt(i.b),
+                {}
+        });
+    }
+    //got the subnets names and host numbers
+
+    //roters textbox
+    associations = getAssociations(ui->routerBox->toPlainText().toStdString());
+    for(const Association& i : associations)
+    {
+        for(size_t j = 0; j < subnets.size(); j++)
+        {
+            if(subnets[j].name == i.b)
+            {
+                check = true;
+                for(size_t k = 0; k < subnets[j].gateways.size(); k++)
+                {
+                    //checking if router is already linked
+                    if(subnets[j].gateways[k] == i.a)
+                    {
+                        check = false;
+                        break;
+                    }
+                }
+                //adding router to the list
+                if(check)subnets[j].gateways.push_back(i.a);
                 break;
             }
         }
     }
+    //got the links between subnets and routers
 
-    readTextBox(ui->routerBox->toPlainText().toStdString(), subnets, 1);
-    for(size_t i = 0; i < subnets.size(); i++)
+    //subnet
+    std::vector<Network> subnet_res = ip.subnet(subnets, ui->checkBox->isChecked());
+    if(subnets.size() != subnet_res.size())
     {
-        for(size_t j = subnets[i].gateways.size(); j >= 1; j--)
-        {
-            for(size_t k = 0; k < j; k++)
-            {
-                if(subnets[i].gateways[j] == subnets[i].gateways[k])
-                {
-                    subnets[i].gateways.erase(subnets[i].gateways.begin() + j);
-                    break;
-                }
-            }
-        }
+        QMessageBox msgBox;
+        msgBox.setWindowTitle("title");
+        msgBox.setText(QString::fromStdString("Error!\nPossible causes: ip, subnets, router"));
+        msgBox.exec();
+        return;
     }
+    //got the results
+
+
+    //link text box
+
+    //got the links between routers
+/*
+
     for(Subnet& i : subnets)
     {
         QMessageBox msgBox;
@@ -154,6 +165,7 @@ void MainWindow::on_calculateBtn_clicked()
         msgBox.exec();
     }
 
+*/
     if(!ui->routerIpInput->text().isEmpty())
     {
 

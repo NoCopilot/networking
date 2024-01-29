@@ -27,7 +27,7 @@ std::string toString(int n)
 	return ss.str();
 }
 
-std::string toBit(int n, int s = -1)
+std::string toBit(int n, int s)
 {
 	if (n < 0) return "";
 	std::string str = "";
@@ -75,12 +75,19 @@ int getPowOf2(int n)
 	return j;
 }
 
+int power(int b, int e)
+{
+    int res = 1;
+    for(int i = e; i >= 1; i--) res *= b;
+    return res;
+}
+
 std::vector<std::string> split(std::string str, char del)
 {
 	std::vector<std::string> to_return;
 	std::string temp = "";
 
-	for (int i = 0; i < (int)str.size(); i++)
+    for (size_t i = 0; i < str.size(); i++)
 	{
 		if (del == str[i])
 		{

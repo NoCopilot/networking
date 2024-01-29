@@ -8,19 +8,22 @@
 
 int toInt(std::string);
 int getPowOf2(int);
+int power(int, int);
 int bitToInt(std::string);
 std::string toString(int);
-std::string toBit(int, int);
+std::string toBit(int, int = -1);
 std::string getmask(int);
 std::string bitTOdec(std::string);
 std::vector<std::string> split(std::string, char);
 std::vector<std::string> split(std::string, int);
-struct network
+
+struct Network
 {
-	std::string name, networkAddress, broadcastAddress, address;
+    std::string name, networkAddress, broadcastAddress;
 	std::vector<std::string> gatewayAdresses, gatewayNames;
 	int cdir;
 };
+
 struct Subnet
 {
     std::string name;
@@ -63,92 +66,82 @@ public:
 		clearHosts();
 	}
 
-    std::vector<network> subnet(std::vector<Subnet> v, bool type = 0)
+    std::vector<Network> subnet(std::vector<Subnet> v, bool vlsm)
     {
+        std::vector<Network> res;
 
-        return {};
+        if(v.size() == 0) return res;
+
+        //sort
+        for(size_t i = 0; i < v.size(); i++)
+        {
+            for(size_t j = i+1; j < v.size(); j++)
+            {
+                if(v[i].hosts < v[j].hosts)
+                {
+                    int temp = v[i].hosts;
+                    v[i].hosts = v[j].hosts;
+                    v[j].hosts = temp;
+                }
+            }
+        }
+
+        std::string net_id = ip.substr(0, cdir);
+        std::string subnet_id;
+        int host_bits = 0, subnet_bits, temp_n;
+        if(!vlsm)
+        {
+            //calculating if network can be subnetted
+            host_bits = getPowOf2(v[0].hosts + v[0].gateways.size() + 2);
+            subnet_bits = 32 - cdir - host_bits;
+            if(subnet_bits < 0) return res;
+            if(subnet_bits == 0 && v.size() > 1) return res;
+            if(v.size() > power(2, subnet_bits)) return res;
+            subnet_id = ip.substr(cdir, subnet_bits);
+        }
+        for(size_t i = 0; i < v.size(); i++)
+        {
+            if(vlsm)
+            {
+                //calculating next network
+                host_bits = getPowOf2(v[i].hosts + v[i].gateways.size() + 2);
+                subnet_bits = 32 - cdir - host_bits;
+
+                //check
+                if(subnet_bits < 0) return res;
+                if(subnet_bits == 0 && v.size() > 1) return res;
+
+                subnet_id = ip.substr(cdir, subnet_bits);
+            }
+
+            temp_n = power(2, host_bits)-1;
+
+            Network network;
+            network.networkAddress = bitTOdec(net_id + subnet_id + toBit(0, host_bits));
+            network.broadcastAddress = bitTOdec(net_id + subnet_id + toBit(temp_n));
+            network.cdir = 32 - cdir + subnet_bits;
+            network.name = v[i].name;
+            for(size_t j = 0; j < v[i].gateways.size(); j++)
+            {
+                network.gatewayNames.insert(network.gatewayNames.begin(), v[i].gateways[j]);
+                network.gatewayAdresses.insert(network.gatewayAdresses.begin(), bitTOdec(net_id + subnet_id + toBit(--temp_n)));
+            }
+            res.push_back(network);
+
+            //next subnet
+            subnet_id = toBit(bitToInt(subnet_id) + 1, subnet_bits);
+            if(subnet_id == "") break;
+            ip.replace(cdir, subnet_id.size(), subnet_id);
+        }
+
+        return res;
     }
 
-	std::vector<network> subnet(bool type = 0)
-	{
-		std::vector<network> result;
-		//fixed -> type = 0
-		//vlsm  -> type = 1
-		int hostbit = 0, subnetbit;
-		std::string netid = ip.substr(0, cdir);
-		if (!type)
-		{
-			for (int n : hosts) if (n > hostbit) hostbit = n;
-			hostbit = getPowOf2(hostbit);
-			subnetbit = 32 - cdir - hostbit;
-			if (subnetbit < 1) return result;
-		} else sort();
-		for (int i = 0; i < (int)hosts.size(); i++)
-		{
-			if (type) //if vlsm, always find the subnet and host bits for every net
-			{
-				hostbit = getPowOf2(hosts[i]);
-				subnetbit = 32 - cdir - hostbit;
-				if (hostbit < 1)
-				{
-					result.clear();
-					return result;
-				}
-				if (subnetbit >= (32 - cdir) || subnetbit < 1)
-				{
-					result.clear();
-					return result;
-				}
-			}
-			//net address
-			result.push_back(network());
-			result[i].name = names[i];
-			result[i].networkAddress = bitTOdec(ip);
-
-			//broadcast address
-			std::string str = ip.substr((size_t)(cdir + subnetbit));
-			for (int j = 0; j < str.size(); j++) str[j] = '1';
-			result[i].broadcastAddress = bitTOdec(ip.substr(0, cdir + subnetbit) + str);
-
-			//todo: gateway names and addresses
-			result[i].gatewayNames = links[i];
-			int n = bitToInt(str);
-			for (int j = links[i].size() - 1; j >= 0; j--)
-			{
-				n--;
-				result[i].gatewayAdresses.insert(result[i].gatewayAdresses.begin(), bitTOdec(ip.substr(0, cdir + subnetbit) + toBit(n, -1)));
-			}
-			result[i].address = bitTOdec(ip.substr(0, cdir + subnetbit) + toBit(n, -1));
-
-			//network cdir
-			result[i].cdir = cdir + subnetbit;
-
-			//next net
-			str = ip.substr(cdir, subnetbit);
-			bool check = false;
-			for (char ch : str)
-			{
-				if (ch != '1')
-				{
-					check = true; break;
-				}
-			}
-			if (!check)
-			{
-				result.clear();
-				return result;
-			}
-			add(str, 1);
-			ip = ip.substr(0, cdir) + str + ip.substr(cdir + str.size());
-		}
-		return result;
-	}
-
-	inline std::string getIp(){return ip;}
-	inline std::string getMask(){return mask;}
-	inline int getCdir(){return cdir;}
-	inline int getIpClass(){return ipClass;}
-	inline void clearHosts() { hosts.clear(); names.clear(); }
+    std::string getIp(){return ip;}
+    std::string getMask(){return mask;}
+    int getCdir(){return cdir;}
+    int getIpClass(){return ipClass;}
+    void clearHosts() { hosts.clear(); names.clear(); }
 private:
 	std::string ip = "", mask = "";
 	int cdir = 0, ipClass = 0;
@@ -177,16 +170,15 @@ private:
 		
 
 		//controllo blocchi
-		for (std::string token : tokens)
+        for (std::string& token : tokens)
 		{
 			int block = toInt(token);
 
-			if (block < 0 || block > 255)
-				return false;
+            if (block < 0 || block > 255) return false;
 		}
 
 		ip = "";
-		for (std::string token : tokens)
+        for (std::string& token : tokens)
 		{
 			ip += toBit(toInt(token), 8);
 		}
