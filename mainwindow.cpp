@@ -151,25 +151,80 @@ void MainWindow::on_calculateBtn_clicked()
     }
     //got the results
 
-
     //link text box
-
+    subnets.clear();
+    associations = getAssociations(ui->linkBox->toPlainText().toStdString());
+    for(const Association& i : associations)
+    {
+        check = true;
+        for(size_t j = 0; j < subnets.size(); j++)
+        {
+            if(subnets[j].name == i.a || subnets[j].name == i.b)
+            {
+                std::string to_find = (i.a == subnets[j].name ? i.b : i.a);
+                bool check1 = true;
+                check = false;
+                for(size_t k = 0; k < subnets[j].gateways.size(); k++)
+                {
+                    if(to_find == subnets[j].gateways[k])
+                    {
+                        check1 = false;
+                        break;
+                    }
+                }
+                if(check1) subnets[j].gateways.push_back(to_find);
+                break;
+            }
+        }
+        if(check) subnets.push_back({i.a, 1, {i.b}});
+    }
     //got the links between routers
-/*
 
-    for(Subnet& i : subnets)
+    if(ui->routerIpInput->text().isEmpty())
     {
-        QMessageBox msgBox;
-        msgBox.setWindowTitle("title");
-        msgBox.setText(QString::fromStdString(toString(i.gateways.size())));
-        msgBox.exec();
+        Ip ip_l;
+
+        if(!ip_l.loadIp(ui->routerIpInput->text().toStdString()))
+        {
+            QMessageBox msgBox;
+            msgBox.setWindowTitle("title");
+            msgBox.setText("Ip not valid");
+            msgBox.exec();
+            return;
+        }
+
     }
 
-*/
-    if(!ui->routerIpInput->text().isEmpty())
+    std::string temp_res, temp;
+    for(size_t i = 0; i < subnet_res.size(); i++)
     {
+        temp = "/" + toString(subnet_res[i].cdir);
 
+        temp_res += subnet_res[i].name + "\n";
+
+        temp_res += "network-address: ";
+        temp_res += subnet_res[i].networkAddress + temp + "\n";
+
+        temp_res += "broadcast-address: ";
+        temp_res += subnet_res[i].broadcastAddress + temp + "\n";
+
+        temp_res += "gateways: ";
+        for(size_t j = 0; j < subnet_res[i].gatewayAdresses.size(); j++)
+        {
+            temp_res += "  " + subnet_res[i].gatewayNames[j] + ": ";
+            temp_res += subnet_res[i].gatewayAdresses[j] + temp + "\n";;
+        }
+
+        temp_res += "\n";
     }
+    ui->resBox->setText(QString::fromStdString(temp_res));
 }
 
 //192.168.1.0/24
+
+/*
+    QMessageBox msgBox;
+    msgBox.setWindowTitle("title");
+    msgBox.setText(QString::fromStdString());
+    msgBox.exec();
+*/

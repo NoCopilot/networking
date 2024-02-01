@@ -119,7 +119,7 @@ public:
             Network network;
             network.networkAddress = bitTOdec(net_id + subnet_id + toBit(0, host_bits));
             network.broadcastAddress = bitTOdec(net_id + subnet_id + toBit(temp_n));
-            network.cdir = 32 - cdir + subnet_bits;
+            network.cdir = cdir + subnet_bits;
             network.name = v[i].name;
             for(size_t j = 0; j < v[i].gateways.size(); j++)
             {
