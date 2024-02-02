@@ -48,6 +48,23 @@ class Ip
 		char ip_class;
 };
 
+struct Subnet
+{
+    std::string name, networkAddress, broadcastAddress;
+    std::vector<std::string> gatewayAdresses, gatewayNames;
+    int cdir;
+};
+
+struct SubnetInfo
+{
+    std::string name;
+    int hosts;
+    std::vector<std::string> gateways;
+};
+
+
+std::vector<Subnet> subnet(Ip, std::vector<SubnetInfo>, bool);
+
 //UTIL FUNCTIONS
 
 //conversion

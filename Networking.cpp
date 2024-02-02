@@ -85,7 +85,14 @@ bool Ip::setIp(std::string _ip)
         return false;
     }
 
-    if(ip.length() == 32) ip = ipToDecimal(ip);
+    if(ip.length() != 32) ip = ipToBit();
+    int n = 0;
+    for(size_t i = 0; i < 4; i++)
+    {
+        if(ip[i] != '1') break;
+        n++;
+    }
+    ip_class = 'a' + n;
     return true;
 }
 
@@ -156,6 +163,79 @@ std::string Mask::getMask()
 int Mask::getCdir()
 {
     return cdir;
+}
+
+//subnetting function
+std::vector<Subnet> subnet(Ip _ip, std::vector<SubnetInfo> v, bool vlsm)
+{
+    std::vector<Subnet> res;
+
+    if(v.size() == 0) return res;
+
+    //sort
+    for(size_t i = 0; i < v.size(); i++)
+    {
+        for(size_t j = i+1; j < v.size(); j++)
+        {
+            if(v[i].hosts < v[j].hosts)
+            {
+                int temp = v[i].hosts;
+                v[i].hosts = v[j].hosts;
+                v[j].hosts = temp;
+            }
+        }
+    }
+
+    std::string ip = _ip.ipToBit();
+    std::string net_id = ip.substr(0, cdir);
+    std::string subnet_id;
+    int host_bits = 0, subnet_bits, temp_n;
+    if(!vlsm)
+    {
+        //calculating if network can be subnetted
+        host_bits = getPowOf2(v[0].hosts + v[0].gateways.size() + 2);
+        subnet_bits = 32 - cdir - host_bits;
+        if(subnet_bits < 0) return res;
+        if(subnet_bits == 0 && v.size() > 1) return res;
+        if(v.size() > power(2, subnet_bits)) return res;
+        subnet_id = ip.substr(cdir, subnet_bits);
+    }
+    for(size_t i = 0; i < v.size(); i++)
+    {
+        if(vlsm)
+        {
+            //calculating next network
+            host_bits = getPowOf2(v[i].hosts + v[i].gateways.size() + 2);
+            subnet_bits = 32 - cdir - host_bits;
+
+            //check
+            if(subnet_bits < 0) return res;
+            if(subnet_bits == 0 && v.size() > 1) return res;
+
+            subnet_id = ip.substr(cdir, subnet_bits);
+        }
+
+        temp_n = power(2, host_bits)-1;
+
+        Subnet network;
+        network.networkAddress = bitTOdec(net_id + subnet_id + toBit(0, host_bits));
+        network.broadcastAddress = bitTOdec(net_id + subnet_id + toBit(temp_n));
+        network.cdir = cdir + subnet_bits;
+        network.name = v[i].name;
+        for(size_t j = 0; j < v[i].gateways.size(); j++)
+        {
+            network.gatewayNames.insert(network.gatewayNames.begin(), v[i].gateways[j]);
+            network.gatewayAdresses.insert(network.gatewayAdresses.begin(), bitTOdec(net_id + subnet_id + toBit(--temp_n)));
+        }
+        res.push_back(network);
+
+        //next subnet
+        subnet_id = toBit(bitToInt(subnet_id) + 1, subnet_bits);
+        if(subnet_id == "") break;
+        ip.replace(cdir, subnet_id.size(), subnet_id);
+    }
+
+    return res;
 }
 
 
