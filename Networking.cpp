@@ -47,9 +47,11 @@ std::string Ip::ipToDecimal(std::string _ip)
 	return res;
 }
 
-std::string Ip::ipToBit()
+std::string Ip::ipToBit(std::string _ip)
 {
-	std::vector<std::string> blocks = split(ip, '.');
+    std::vector<std::string> blocks = split(_ip, '.');
+    if(blocks.size() != 4) return "";
+
 	std::string res("");
 	int n;
 	
@@ -69,9 +71,19 @@ Ip::Ip(std::string _ip)
     setIp(_ip);
 }
 
-std::string Ip::applyMask(Mask _mask)
+bool Ip::applyMask(Mask _mask)
 {
-	return "";
+    if(_mask.getMask() == "") return false;
+
+    std::string _ip = ipToBit(ip);
+    std::string b_mask = ipToBit(_mask.getMask());
+
+    for(size_t i = 0; i < _ip.size(); i++)
+        if(_ip[i] != b_mask[i])
+            _ip[i] = '0';
+
+    ip = ipToDecimal(_ip);
+    return true;
 }
 
 
@@ -85,13 +97,14 @@ bool Ip::setIp(std::string _ip)
         return false;
     }
 
-    if(ip.length() != 32) ip = ipToBit();
+    if(ip.length() != 32) ip = ipToBit(ip);
     int n = 0;
     for(size_t i = 0; i < 4; i++)
     {
         if(ip[i] != '1') break;
         n++;
     }
+    ip = ipToDecimal(ip);
     ip_class = 'a' + n;
     return true;
 }
@@ -111,6 +124,16 @@ std::string Ip::getIp()
 //mask class
 
 Mask::Mask(std::string _mask)
+{
+    setMask(_mask);
+}
+
+Mask::Mask(int _mask)
+{
+    setMask(_mask);
+}
+
+Mask::Mask(char _mask)
 {
     setMask(_mask);
 }
@@ -138,9 +161,10 @@ void Mask::setMask(int n)
 {
     if(n < 0 || n > 32) return;
     mask = "";
-    while(n >= 1) mask += "1";
+    cdir = n;
+    while((n--) >= 1) mask += "1";
     while(mask.length() < 32) mask += "0";
-    mask = Ip(mask).ipToBit();
+    mask = Ip::ipToDecimal(mask);
 }
 
 void Mask::setMask(char _class)
@@ -166,8 +190,10 @@ int Mask::getCdir()
 }
 
 //subnetting function
-std::vector<Subnet> subnet(Ip _ip, std::vector<SubnetInfo> v, bool vlsm)
+std::vector<Subnet> subnet(Ip& _ip, int cdir, std::vector<SubnetInfo> v, bool vlsm, bool do_first)
 {
+    if(_ip.getIp().size() == 0) return {};
+
     std::vector<Subnet> res;
 
     if(v.size() == 0) return res;
@@ -186,26 +212,28 @@ std::vector<Subnet> subnet(Ip _ip, std::vector<SubnetInfo> v, bool vlsm)
         }
     }
 
-    std::string ip = _ip.ipToBit();
+    std::string ip = _ip.ipToBit(_ip.getIp());
     std::string net_id = ip.substr(0, cdir);
     std::string subnet_id;
     int host_bits = 0, subnet_bits, temp_n;
+
     if(!vlsm)
     {
         //calculating if network can be subnetted
-        host_bits = getPowOf2(v[0].hosts + v[0].gateways.size() + 2);
+        host_bits = powOf2(v[0].hosts + v[0].gateways.size() + 2);
         subnet_bits = 32 - cdir - host_bits;
         if(subnet_bits < 0) return res;
         if(subnet_bits == 0 && v.size() > 1) return res;
         if(v.size() > power(2, subnet_bits)) return res;
         subnet_id = ip.substr(cdir, subnet_bits);
     }
+
     for(size_t i = 0; i < v.size(); i++)
     {
         if(vlsm)
         {
             //calculating next network
-            host_bits = getPowOf2(v[i].hosts + v[i].gateways.size() + 2);
+            host_bits = powOf2(v[i].hosts + v[i].gateways.size() + 2);
             subnet_bits = 32 - cdir - host_bits;
 
             //check
@@ -215,26 +243,37 @@ std::vector<Subnet> subnet(Ip _ip, std::vector<SubnetInfo> v, bool vlsm)
             subnet_id = ip.substr(cdir, subnet_bits);
         }
 
+        if(do_first)
+        {
+            //next subnet
+            subnet_id = intToBit(bitToInt(subnet_id) + 1, subnet_bits);
+            if(subnet_id == "") break;
+            ip.replace(cdir, subnet_id.size(), subnet_id);
+        }
+
         temp_n = power(2, host_bits)-1;
 
         Subnet network;
-        network.networkAddress = bitTOdec(net_id + subnet_id + toBit(0, host_bits));
-        network.broadcastAddress = bitTOdec(net_id + subnet_id + toBit(temp_n));
+        network.networkAddress = Ip::ipToDecimal(net_id + subnet_id + intToBit(0, host_bits));
+        network.broadcastAddress = Ip::ipToDecimal(net_id + subnet_id + intToBit(temp_n));
         network.cdir = cdir + subnet_bits;
         network.name = v[i].name;
         for(size_t j = 0; j < v[i].gateways.size(); j++)
         {
             network.gatewayNames.insert(network.gatewayNames.begin(), v[i].gateways[j]);
-            network.gatewayAdresses.insert(network.gatewayAdresses.begin(), bitTOdec(net_id + subnet_id + toBit(--temp_n)));
+            network.gatewayAdresses.insert(network.gatewayAdresses.begin(), Ip::ipToDecimal(net_id + subnet_id + intToBit(--temp_n)));
         }
         res.push_back(network);
 
+        if(do_first) continue;
+
         //next subnet
-        subnet_id = toBit(bitToInt(subnet_id) + 1, subnet_bits);
+        subnet_id = intToBit(bitToInt(subnet_id) + 1, subnet_bits);
         if(subnet_id == "") break;
         ip.replace(cdir, subnet_id.size(), subnet_id);
     }
 
+    _ip.setIp(ip);
     return res;
 }
 

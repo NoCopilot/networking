@@ -68,8 +68,26 @@ void MainWindow::on_closeWindowBtn_clicked()
 
 void MainWindow::on_calculateBtn_clicked()
 {
-    Ip ip;
-    if(!ip.loadIp(ui->ipInput->text().toStdString()))
+    std::string ip_input = ui->ipInput->text().toStdString(), mask_input = ui->maskInput->text().toStdString();
+    int n = ip_input.rfind('/');
+    if(n != -1)
+    {
+        if(n+1 >= ip_input.size())
+        {
+            QMessageBox msgBox;
+            msgBox.setWindowTitle("title");
+            msgBox.setText("Ip not valid");
+            msgBox.exec();
+            return;
+        }
+        else
+        {
+            mask_input = ip_input.substr(n+1);
+            ip_input = ip_input.substr(0, n);
+        }
+    }
+    Ip ip(ip_input);
+    if(ip.getIp() == "")
     {
         QMessageBox msgBox;
         msgBox.setWindowTitle("title");
@@ -77,16 +95,35 @@ void MainWindow::on_calculateBtn_clicked()
         msgBox.exec();
         return;
     }
-    if(ip.getMask().size() == 0 && !ip.loadMask(ui->maskInput->text().toStdString()))
-    {
-        QMessageBox msgBox;
-        msgBox.setWindowTitle("title");
-        msgBox.setText("Mask not valid");
-        msgBox.exec();
-        return;
-    }
 
-    std::vector<Subnet> subnets;
+    Mask* mask = nullptr;
+    if(mask_input.size() > 0 && mask_input.size() < 3)
+    {
+        mask = new Mask(stringToInt(mask_input));
+        if(mask->getMask().size() == 0)
+        {
+            QMessageBox msgBox;
+            msgBox.setWindowTitle("title");
+            msgBox.setText("Cdir not valid");
+            msgBox.exec();
+            return;
+        }
+    }
+    else
+    {
+        mask = new Mask(mask_input);
+        if(mask->getMask().size() == 0)
+        {
+            QMessageBox msgBox;
+            msgBox.setWindowTitle("title");
+            msgBox.setText("Mask not valid");
+            msgBox.exec();
+            return;
+        }
+    }
+    ip.applyMask(*mask);
+
+    std::vector<SubnetInfo> _subnets;
 
     //subnet textbox
     std::vector<Association> associations = getAssociations(ui->subnetBox->toPlainText().toStdString());
@@ -95,9 +132,9 @@ void MainWindow::on_calculateBtn_clicked()
     {
         //checking if already exist
         check = true;
-        for(size_t j = 0; j < subnets.size(); j++)
+        for(size_t j = 0; j < _subnets.size(); j++)
         {
-            if(subnets[j].name == i.a)
+            if(_subnets[j].name == i.a)
             {
                 check = false;
                 break;
@@ -105,34 +142,34 @@ void MainWindow::on_calculateBtn_clicked()
         }
         if(!check) continue;
         //adding the subnet
-        subnets.push_back({
+        _subnets.push_back({
                 i.a,
-                toInt(i.b),
+                stringToInt(i.b),
                 {}
         });
     }
-    //got the subnets names and host numbers
+    //got the _subnets names and host numbers
 
     //roters textbox
     associations = getAssociations(ui->routerBox->toPlainText().toStdString());
     for(const Association& i : associations)
     {
-        for(size_t j = 0; j < subnets.size(); j++)
+        for(size_t j = 0; j < _subnets.size(); j++)
         {
-            if(subnets[j].name == i.b)
+            if(_subnets[j].name == i.b)
             {
                 check = true;
-                for(size_t k = 0; k < subnets[j].gateways.size(); k++)
+                for(size_t k = 0; k < _subnets[j].gateways.size(); k++)
                 {
                     //checking if router is already linked
-                    if(subnets[j].gateways[k] == i.a)
+                    if(_subnets[j].gateways[k] == i.a)
                     {
                         check = false;
                         break;
                     }
                 }
                 //adding router to the list
-                if(check)subnets[j].gateways.push_back(i.a);
+                if(check)_subnets[j].gateways.push_back(i.a);
                 break;
             }
         }
@@ -140,9 +177,11 @@ void MainWindow::on_calculateBtn_clicked()
     //got the links between subnets and routers
 
     //subnet
-    std::vector<Network> subnet_res = ip.subnet(subnets, ui->checkBox->isChecked());
-    if(subnets.size() != subnet_res.size())
+    subnets = subnet(ip, mask->getCdir(), _subnets, ui->checkBox->isChecked());
+    if(_subnets.size() != subnets.size())
     {
+        subnets.clear();
+
         QMessageBox msgBox;
         msgBox.setWindowTitle("title");
         msgBox.setText(QString::fromStdString("Error!\nPossible causes: ip, subnets, router"));
@@ -152,79 +191,176 @@ void MainWindow::on_calculateBtn_clicked()
     //got the results
 
     //link text box
-    subnets.clear();
+    _subnets.clear();
     associations = getAssociations(ui->linkBox->toPlainText().toStdString());
     for(const Association& i : associations)
     {
         check = true;
-        for(size_t j = 0; j < subnets.size(); j++)
+        if(i.a == i.b) continue;
+        for(size_t j = 0; j < _subnets.size(); j++)
         {
-            if(subnets[j].name == i.a || subnets[j].name == i.b)
+            if(_subnets[j].name == i.a || _subnets[j].name == i.b)
             {
-                std::string to_find = (i.a == subnets[j].name ? i.b : i.a);
+                std::string to_find = (i.a == _subnets[j].name ? i.b : i.a);
                 bool check1 = true;
                 check = false;
-                for(size_t k = 0; k < subnets[j].gateways.size(); k++)
+                for(size_t k = 0; k < _subnets[j].gateways.size(); k++)
                 {
-                    if(to_find == subnets[j].gateways[k])
+                    if(to_find == _subnets[j].gateways[k])
                     {
                         check1 = false;
                         break;
                     }
                 }
-                if(check1) subnets[j].gateways.push_back(to_find);
+                if(check1) _subnets[j].gateways.push_back(to_find);
                 break;
             }
         }
-        if(check) subnets.push_back({i.a, 1, {i.b}});
+        if(check) _subnets.push_back({i.a, 1, {i.b}});
     }
     //got the links between routers
 
-    if(ui->routerIpInput->text().isEmpty())
-    {
-        Ip ip_l;
-
-        if(!ip_l.loadIp(ui->routerIpInput->text().toStdString()))
-        {
-            QMessageBox msgBox;
-            msgBox.setWindowTitle("title");
-            msgBox.setText("Ip not valid");
-            msgBox.exec();
-            return;
-        }
-
-    }
-
+    //print the subnet results
     std::string temp_res, temp;
-    for(size_t i = 0; i < subnet_res.size(); i++)
+    for(size_t i = 0; i < subnets.size(); i++)
     {
-        temp = "/" + toString(subnet_res[i].cdir);
+        temp = "/" + intToString(subnets[i].cdir);
 
-        temp_res += subnet_res[i].name + "\n";
+        temp_res += subnets[i].name + "\n";
 
         temp_res += "network-address: ";
-        temp_res += subnet_res[i].networkAddress + temp + "\n";
+        temp_res += subnets[i].networkAddress + temp + "\n";
 
         temp_res += "broadcast-address: ";
-        temp_res += subnet_res[i].broadcastAddress + temp + "\n";
+        temp_res += subnets[i].broadcastAddress + temp + "\n";
 
         temp_res += "gateways: ";
-        for(size_t j = 0; j < subnet_res[i].gatewayAdresses.size(); j++)
+        for(size_t j = 0; j < subnets[i].gatewayAdresses.size(); j++)
         {
-            temp_res += "  " + subnet_res[i].gatewayNames[j] + ": ";
-            temp_res += subnet_res[i].gatewayAdresses[j] + temp + "\n";;
+            temp_res += "  " + subnets[i].gatewayNames[j] + ": ";
+            temp_res += subnets[i].gatewayAdresses[j] + temp + "\n";;
+        }
+
+        temp_res += "\n";
+    }
+    ui->resBox->setText(QString::fromStdString(temp_res + "\n"));
+    //end
+
+    //print router results
+    routers = subnet(ip, mask->getCdir(), _subnets, true);
+    if(routers.size() != _subnets.size())
+    {
+        routers.clear();
+
+        QMessageBox msgBox;
+        msgBox.setWindowTitle("title");
+        msgBox.setText(QString::fromStdString("Error!\nPossible causes: router links"));
+        msgBox.exec();
+        return;
+    }
+    for(size_t i = 0; i < routers.size(); i++)
+    {
+        temp = "/" + intToString(routers[i].cdir);
+
+        temp_res += routers[i].name + "\n";
+
+        temp_res += "network-address: ";
+        temp_res += routers[i].networkAddress + temp + "\n";
+
+        temp_res += "broadcast-address: ";
+        temp_res += routers[i].broadcastAddress + temp + "\n";
+
+        temp_res += "gateways: ";
+        for(size_t j = 0; j < routers[i].gatewayAdresses.size(); j++)
+        {
+            temp_res += "  " + routers[i].gatewayNames[j] + ": ";
+            temp_res += routers[i].gatewayAdresses[j] + temp + "\n";;
         }
 
         temp_res += "\n";
     }
     ui->resBox->setText(QString::fromStdString(temp_res));
+    //end
 }
 
-//192.168.1.0/24
+void MainWindow::on_dijkstraBtn_clicked()
+{
+    on_calculateBtn_clicked();
+    d_from = "";
+    d_to = "";
 
-/*
-    QMessageBox msgBox;
-    msgBox.setWindowTitle("title");
-    msgBox.setText(QString::fromStdString());
-    msgBox.exec();
-*/
+    if(routers.size() == 0)
+    {
+        QMessageBox msgBox;
+        msgBox.setWindowTitle("title");
+        msgBox.setText(QString::fromStdString("Please set first the routers"));
+        msgBox.exec();
+        return;
+    }
+    ui->stackedWidget->setCurrentIndex(1);
+
+    QStringList wordList;
+    std::string str;
+    bool check;
+    for(Subnet& s : routers)
+    {
+        str = s.name;
+        check = true;
+        for(size_t i = 0; i < wordList.size(); i++)
+        {
+            if(wordList[i].toStdString() == str)
+            {
+                check = false;
+                break;
+            }
+        }
+        if(check) wordList << QString::fromStdString(str);
+
+        for(size_t i = 0; i < s.gatewayNames.size(); i++)
+        {
+            check = true;
+            for(size_t j = 0; j < wordList.size(); j++)
+            {
+                if(wordList[j].toStdString() == s.gatewayNames[i])
+                {
+                    check = false;
+                    break;
+                }
+            }
+            if(check) wordList << QString::fromStdString(s.gatewayNames[i]);
+        }
+    }
+
+    ui->fromList->blockSignals(true);
+    ui->toList->blockSignals(true);
+
+    ui->fromList->clear();
+    ui->toList->clear();
+
+    ui->fromList->blockSignals(false);
+    ui->toList->blockSignals(false);
+
+    ui->fromList->addItems(wordList);
+    ui->toList->addItems(wordList);
+}
+
+
+void MainWindow::on_fromList_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous)
+{
+    d_from = current->text().toStdString();
+    std::cout << "changed from\n";
+}
+
+
+void MainWindow::on_toList_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous)
+{
+    d_to = current->text().toStdString();
+    std::cout << "changed to\n";
+}
+
+
+void MainWindow::on_goBackBtn_clicked()
+{
+    ui->stackedWidget->setCurrentIndex(0);
+}
+

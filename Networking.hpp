@@ -9,8 +9,10 @@
 class Mask
 {
 	public:
-		Mask(std::string);
-		static bool checkMask(std::string);
+        Mask(std::string);
+        Mask(int);
+        Mask(char);
+        static bool checkMask(std::string);
 		
 		//sets
 		bool setMask(std::string);
@@ -31,10 +33,10 @@ class Ip
 		//class functions
 		static bool checkIp(std::string);
 		static std::string ipToDecimal(std::string);
-		std::string ipToBit();
+        static std::string ipToBit(std::string);
 		
 		Ip(std::string);
-		std::string applyMask(Mask);
+        bool applyMask(Mask);
 		
 		//sets
 		bool setIp(std::string);
@@ -63,7 +65,7 @@ struct SubnetInfo
 };
 
 
-std::vector<Subnet> subnet(Ip, std::vector<SubnetInfo>, bool);
+std::vector<Subnet> subnet(Ip&, int, std::vector<SubnetInfo>, bool, bool = false);
 
 //UTIL FUNCTIONS
 

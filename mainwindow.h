@@ -2,12 +2,15 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include "QListWidgetItem"
 #include "qfiledialog.h"
 #include "qpalette.h"
 #include "qmessagebox.h"
-#include "Ip.hpp"
+#include "qstringlist.h"
+
+#include "Networking.hpp"
 #include <fstream>
-#include <string>
+#include <iostream>
 
 std::string readFile(std::wstring);
 
@@ -32,7 +35,18 @@ private slots:
 
     void on_calculateBtn_clicked();
 
+    void on_dijkstraBtn_clicked();
+
+    void on_fromList_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous);
+
+    void on_toList_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous);
+
+    void on_goBackBtn_clicked();
+
 private:
     Ui::MainWindow *ui;
+    std::vector<Subnet> subnets;
+    std::vector<Subnet> routers;
+    std::string d_from, d_to;
 };
 #endif // MAINWINDOW_H
